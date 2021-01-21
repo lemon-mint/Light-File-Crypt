@@ -42,6 +42,7 @@ func encryptFileCBC(input *os.File, output *os.File, bc cipher.Block, iv []byte)
 			for i := range EncBuf {
 				EncBuf[i] = EncBuf[i] ^ iv[i]
 			}
+			bc.Encrypt(EncryptedBuf, EncBuf)
 			copy(iv, EncryptedBuf)
 			w.Write(EncryptedBuf)
 		} else {
