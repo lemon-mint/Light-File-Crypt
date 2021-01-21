@@ -16,3 +16,8 @@
 
 #VSCODE
 .vscode
+
+# PROJECT
+*.lfc
+test.lfc
+*.bin
