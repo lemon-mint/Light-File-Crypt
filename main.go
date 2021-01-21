@@ -32,7 +32,7 @@ func encryptFileCBC(input *os.File, output *os.File, bc cipher.Block, iv []byte)
 	defer w.Flush()
 	defer output.Sync()
 
-	input.Write(iv)
+	w.Write(iv)
 	for {
 		n, err := input.Read(EncBuf)
 		if err != nil {
