@@ -21,3 +21,4 @@
 *.lfc
 test.lfc
 *.bin
+lfc.*
