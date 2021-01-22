@@ -5,33 +5,144 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"io"
 	"os"
+	"strings"
+	"syscall"
+
+	"golang.org/x/crypto/argon2"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 func main() {
-	output, err := os.OpenFile("test.lfc", os.O_CREATE, os.ModeAppend)
-	if err != nil {
-		fmt.Println(err)
+	mode := -1
+	filename := ""
+	fmt.Println("Light-File-Crypt")
+	fmt.Println("MIT License Copyright (c) 2021 lemon-mint")
+	fmt.Println()
+	fmt.Println("Please select an operation mode")
+	fmt.Println("0. Encrypt")
+	fmt.Println("1. Decrypt")
+	fmt.Print("mode >>")
+	fmt.Scanln(&mode)
+	fmt.Println()
+	if mode == 0 {
+		fmt.Println("Please enter the file to be encrypted")
+		fmt.Print("file >>")
+		fmt.Scanln(&filename)
+		fmt.Println()
+		if _, err := os.Stat(filename + ".lfc"); err == nil {
+			fmt.Printf("File %s already exists.", filename+".lfc")
+			return
+		}
+		fmt.Println("Please enter the encryption key")
+		fmt.Print("key >>")
+		keyString, err := terminal.ReadPassword(int(syscall.Stdin))
+		fmt.Println()
+		salt := make([]byte, 32)
+		io.ReadFull(rand.Reader, salt)
+		fmt.Println("Hashing")
+		key := argon2.Key(keyString, salt, 32, 64*1024, 2, 32)
+
+		io.ReadFull(rand.Reader, keyString)
+		io.ReadFull(rand.Reader, keyString)
+		io.ReadFull(rand.Reader, keyString)
+		io.ReadFull(rand.Reader, keyString)
+		io.ReadFull(rand.Reader, keyString)
+		defer io.ReadFull(rand.Reader, key)
+		defer io.ReadFull(rand.Reader, key)
+		defer io.ReadFull(rand.Reader, key)
+		defer io.ReadFull(rand.Reader, key)
+		defer io.ReadFull(rand.Reader, key)
+
+		bc, _ := aes.NewCipher(key)
+		f, err := os.Open(filename)
+		if err != nil {
+			fmt.Println("File Open Error")
+			return
+		}
+		defer f.Sync()
+		output, err := os.OpenFile(filename+".lfc", os.O_CREATE, os.ModeAppend)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		iv := make([]byte, 16)
+		io.ReadFull(rand.Reader, iv)
+		fmt.Println("Encryption is in progress. Please wait patiently.")
+		encryptFileCBC(f, output, bc, iv, salt)
+		return
+	} else if mode == 1 {
+		fmt.Println("Please enter the file to be decrypted")
+		fmt.Print("file >>")
+		fmt.Scanln(&filename)
+		fmt.Println()
+		if !strings.HasSuffix(filename, ".lfc") {
+			fmt.Println("The file must have a .lfc extension.")
+			return
+		}
+		if _, err := os.Stat(filename[:len(filename)-4]); err == nil {
+			fmt.Printf("File %s already exists.", filename[:len(filename)-4])
+			return
+		}
+		fmt.Println("Please enter the encryption key")
+		fmt.Print("key >>")
+		keyString, err := terminal.ReadPassword(int(syscall.Stdin))
+		fmt.Println()
+		salt := make([]byte, 32)
+
+		fmt.Println("Hashing")
+
+		f, err := os.Open(filename)
+		if err != nil {
+			fmt.Println("File Open Error")
+			return
+		}
+		defer f.Sync()
+		output, err := os.OpenFile(filename[:len(filename)-4], os.O_CREATE, os.ModeAppend)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		f.Read(salt)
+
+		key := argon2.Key(keyString, salt, 32, 64*1024, 2, 32)
+		io.ReadFull(rand.Reader, keyString)
+		io.ReadFull(rand.Reader, keyString)
+		io.ReadFull(rand.Reader, keyString)
+		io.ReadFull(rand.Reader, keyString)
+		io.ReadFull(rand.Reader, keyString)
+		defer io.ReadFull(rand.Reader, key)
+		defer io.ReadFull(rand.Reader, key)
+		defer io.ReadFull(rand.Reader, key)
+		defer io.ReadFull(rand.Reader, key)
+		defer io.ReadFull(rand.Reader, key)
+		bc, _ := aes.NewCipher(key)
+
+		iv := make([]byte, 16)
+		io.ReadFull(rand.Reader, iv)
+		fmt.Println("Decryption is in progress. Please wait patiently.")
+		err = decryptFileCBC(f, output, bc)
+		if err != nil {
+			fmt.Println("Decryption Failed")
+			fmt.Println(err)
+			return
+		}
 		return
 	}
-	bc, _ := aes.NewCipher([]byte("mysuperstrongencryptionkey000000"))
-	f, err := os.Open("1000MB.bin")
-	if err != nil {
-		return
-	}
-	defer f.Sync()
-	encryptFileCBC(f, output, bc, make([]byte, 16))
 }
 
-func encryptFileCBC(input io.Reader, output io.Writer, bc cipher.Block, iv []byte) error {
+func encryptFileCBC(input io.Reader, output io.Writer, bc cipher.Block, iv, salt []byte) error {
 	EncBuf := make([]byte, 16)
 	EncryptedBuf := make([]byte, 16)
-	r := bufio.NewReaderSize(input, 1024*1024*10)
-	w := bufio.NewWriterSize(output, 1024*1024*10)
+	r := bufio.NewReaderSize(input, 1024*1024*20)
+	w := bufio.NewWriterSize(output, 1024*1024*20)
 	defer w.Flush()
 
+	w.Write(salt)
 	w.Write(iv)
 	for {
 		n, err := r.Read(EncBuf)
@@ -75,6 +186,56 @@ func encryptFileCBC(input io.Reader, output io.Writer, bc cipher.Block, iv []byt
 			copy(iv, EncryptedBuf)
 			w.Write(EncryptedBuf)
 			break
+		}
+	}
+	return nil
+}
+
+var errWrongSize = errors.New("Weong Size")
+
+func decryptFileCBC(input io.Reader, output io.Writer, bc cipher.Block) error {
+	r := bufio.NewReaderSize(input, 1024*1024*20)
+	w := bufio.NewWriterSize(output, 1024*1024*20)
+	defer w.Flush()
+	iv := make([]byte, 16)
+	n, err := r.Read(iv)
+	if err != nil {
+		return err
+	}
+	if n != 16 {
+		return errWrongSize
+	}
+	Buf := make([]byte, 16)
+	lastBuf := make([]byte, 16)
+	isStart := true
+	for {
+		n, err := r.Read(Buf)
+		if err == io.EOF {
+			if lastBuf[15] < 16 {
+				w.Write(lastBuf[0 : 16-int(lastBuf[15])])
+				break
+			} else if lastBuf[15] == 16 {
+				break
+			} else {
+				return errWrongSize
+			}
+		}
+		if err != nil {
+			return err
+		}
+		if n != 16 {
+			return errWrongSize
+		}
+		if !isStart {
+			w.Write(lastBuf)
+		}
+		bc.Decrypt(lastBuf, Buf)
+		for i := range lastBuf {
+			lastBuf[i] = lastBuf[i] ^ iv[i]
+		}
+		copy(iv, Buf)
+		if isStart {
+			isStart = false
 		}
 	}
 	return nil
