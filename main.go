@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-
-	_ "github.com/lemon-mint/LEA/golea"
 )
 
 func main() {
