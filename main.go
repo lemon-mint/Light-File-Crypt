@@ -2,13 +2,14 @@ package main
 
 import (
 	"bufio"
+	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
 	"fmt"
 	"io"
 	"os"
 
-	"github.com/lemon-mint/LEA/golea"
+	_ "github.com/lemon-mint/LEA/golea"
 )
 
 func main() {
@@ -17,7 +18,7 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-	bc, _ := golea.NewCipher([]byte("mysuperstrongencryptionkey000000"))
+	bc, _ := aes.NewCipher([]byte("mysuperstrongencryptionkey000000"))
 	f, err := os.Open("1000MB.bin")
 	if err != nil {
 		return
