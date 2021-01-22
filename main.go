@@ -44,7 +44,7 @@ func main() {
 		salt := make([]byte, 32)
 		io.ReadFull(rand.Reader, salt)
 		fmt.Println("Hashing")
-		key := argon2.Key(keyString, salt, 32, 64*1024, 2, 32)
+		key := argon2.IDKey(keyString, salt, 32, 64*1024, 2, 32)
 
 		io.ReadFull(rand.Reader, keyString)
 		io.ReadFull(rand.Reader, keyString)
@@ -109,7 +109,7 @@ func main() {
 		}
 		f.Read(salt)
 
-		key := argon2.Key(keyString, salt, 32, 64*1024, 2, 32)
+		key := argon2.IDKey(keyString, salt, 32, 64*1024, 2, 32)
 		io.ReadFull(rand.Reader, keyString)
 		io.ReadFull(rand.Reader, keyString)
 		io.ReadFull(rand.Reader, keyString)
