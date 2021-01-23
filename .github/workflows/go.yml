@@ -18,7 +18,13 @@ jobs:
       with:
         go-version: 1.15
 
-    - name: Build
-      run: go build -v -a -o lfc_linux_amd64 .
+    - name: Build linux_i386
+      run: GOOS=linux GOARCH=386 go build -v -a -o lfc_linux_i386 .
+    - name: Build linux_arm64
+      run: GOOS=linux GOARCH=arm64 go build -v -a -o lfc_linux_arm64 .
+    - name: Build linux_amd64
+      run: GOOS=linux GOARCH=amd64 go build -v -a -o lfc_linux_amd64 .
+    - name: Build windows_amd64
+      run: GOOS=windows GOARCH=amd64 go build -v -a -o lfc_windows_amd64.exe .
     - name: File listing
       run: ls -al
