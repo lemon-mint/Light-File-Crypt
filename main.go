@@ -6,6 +6,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -17,121 +18,162 @@ import (
 )
 
 func main() {
+
+	inputMode := flag.String("input", "cli", "file or stdin or cli")
+	outputMode := flag.String("output", "cli", "file or stdout or cli")
+	opMode := flag.String("op", "", "encrypt or decrypt")
+	stdKey := flag.String("key", "", "Key used for encryption")
+	flag.Parse()
+
 	mode := -1
 	filename := ""
-	fmt.Println("Light-File-Crypt")
-	fmt.Println("MIT License Copyright (c) 2021 lemon-mint")
-	fmt.Println()
-	fmt.Println("Please select an operation mode")
-	fmt.Println("0. Encrypt")
-	fmt.Println("1. Decrypt")
-	fmt.Print("mode >>")
-	fmt.Scanln(&mode)
-	fmt.Println()
-	if mode == 0 {
-		fmt.Println("Please enter the file to be encrypted")
-		fmt.Print("file >>")
-		fmt.Scanln(&filename)
+	if *inputMode == "cli" {
+		fmt.Println("Light-File-Crypt")
+		fmt.Println("MIT License Copyright (c) 2021 lemon-mint")
 		fmt.Println()
-		if _, err := os.Stat(filename + ".lfc"); err == nil {
-			fmt.Printf("File %s already exists.", filename+".lfc")
-			return
-		}
-		fmt.Println("Please enter the encryption key")
-		fmt.Print("key >>")
-		keyString, err := terminal.ReadPassword(int(syscall.Stdin))
+		fmt.Println("Please select an operation mode")
+		fmt.Println("0. Encrypt")
+		fmt.Println("1. Decrypt")
+		fmt.Print("mode >>")
+		fmt.Scanln(&mode)
 		fmt.Println()
-		salt := make([]byte, 32)
-		io.ReadFull(rand.Reader, salt)
-		fmt.Println("Hashing")
-		key := argon2.IDKey(keyString, salt, 32, 64*1024, 2, 32)
+		if mode == 0 {
+			fmt.Println("Please enter the file to be encrypted")
+			fmt.Print("file >>")
+			fmt.Scanln(&filename)
+			fmt.Println()
+			if _, err := os.Stat(filename + ".lfc"); err == nil {
+				fmt.Printf("File %s already exists.", filename+".lfc")
+				return
+			}
+			fmt.Println("Please enter the encryption key")
+			fmt.Print("key >>")
+			keyString, err := terminal.ReadPassword(int(syscall.Stdin))
+			fmt.Println()
+			salt := make([]byte, 32)
+			io.ReadFull(rand.Reader, salt)
+			fmt.Println("Hashing")
+			key := argon2.IDKey(keyString, salt, 32, 64*1024, 2, 32)
 
-		io.ReadFull(rand.Reader, keyString)
-		io.ReadFull(rand.Reader, keyString)
-		io.ReadFull(rand.Reader, keyString)
-		io.ReadFull(rand.Reader, keyString)
-		io.ReadFull(rand.Reader, keyString)
-		defer io.ReadFull(rand.Reader, key)
-		defer io.ReadFull(rand.Reader, key)
-		defer io.ReadFull(rand.Reader, key)
-		defer io.ReadFull(rand.Reader, key)
-		defer io.ReadFull(rand.Reader, key)
+			io.ReadFull(rand.Reader, keyString)
+			io.ReadFull(rand.Reader, keyString)
+			io.ReadFull(rand.Reader, keyString)
+			io.ReadFull(rand.Reader, keyString)
+			io.ReadFull(rand.Reader, keyString)
+			defer io.ReadFull(rand.Reader, key)
+			defer io.ReadFull(rand.Reader, key)
+			defer io.ReadFull(rand.Reader, key)
+			defer io.ReadFull(rand.Reader, key)
+			defer io.ReadFull(rand.Reader, key)
 
-		bc, _ := aes.NewCipher(key)
-		f, err := os.Open(filename)
-		if err != nil {
-			fmt.Println("File Open Error")
+			bc, _ := aes.NewCipher(key)
+			f, err := os.Open(filename)
+			if err != nil {
+				fmt.Println("File Open Error")
+				return
+			}
+			output, err := os.OpenFile(filename+".lfc", os.O_CREATE, os.ModeAppend)
+			defer output.Sync()
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+
+			iv := make([]byte, 16)
+			io.ReadFull(rand.Reader, iv)
+			fmt.Println("Encryption is in progress. Please wait patiently.")
+			encryptFileCBC(f, output, bc, iv, salt)
+			return
+		} else if mode == 1 {
+			fmt.Println("Please enter the file to be decrypted")
+			fmt.Print("file >>")
+			fmt.Scanln(&filename)
+			fmt.Println()
+			if !strings.HasSuffix(filename, ".lfc") {
+				fmt.Println("The file must have a .lfc extension.")
+				return
+			}
+			if _, err := os.Stat(filename[:len(filename)-4]); err == nil {
+				fmt.Printf("File %s already exists.", filename[:len(filename)-4])
+				return
+			}
+			fmt.Println("Please enter the encryption key")
+			fmt.Print("key >>")
+			keyString, err := terminal.ReadPassword(int(syscall.Stdin))
+			fmt.Println()
+			salt := make([]byte, 32)
+
+			fmt.Println("Hashing")
+
+			f, err := os.Open(filename)
+			if err != nil {
+				fmt.Println("File Open Error")
+				return
+			}
+			defer f.Sync()
+			output, err := os.OpenFile(filename[:len(filename)-4], os.O_CREATE, os.ModeAppend)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			f.Read(salt)
+
+			key := argon2.IDKey(keyString, salt, 32, 64*1024, 2, 32)
+			io.ReadFull(rand.Reader, keyString)
+			io.ReadFull(rand.Reader, keyString)
+			io.ReadFull(rand.Reader, keyString)
+			io.ReadFull(rand.Reader, keyString)
+			io.ReadFull(rand.Reader, keyString)
+			defer io.ReadFull(rand.Reader, key)
+			defer io.ReadFull(rand.Reader, key)
+			defer io.ReadFull(rand.Reader, key)
+			defer io.ReadFull(rand.Reader, key)
+			defer io.ReadFull(rand.Reader, key)
+			bc, _ := aes.NewCipher(key)
+
+			iv := make([]byte, 16)
+			io.ReadFull(rand.Reader, iv)
+			fmt.Println("Decryption is in progress. Please wait patiently.")
+			err = decryptFileCBC(f, output, bc)
+			if err != nil {
+				fmt.Println("Decryption Failed")
+				fmt.Println(err)
+				return
+			}
 			return
 		}
-		defer f.Sync()
-		output, err := os.OpenFile(filename+".lfc", os.O_CREATE, os.ModeAppend)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
+	} else if *inputMode == "stdin" && *outputMode == "stdout" {
+		if *opMode == "encrypt" || *opMode == "e" || *opMode == "enc" {
+			keyString := []byte(*stdKey)
+			salt := make([]byte, 32)
+			io.ReadFull(rand.Reader, salt)
+			key := argon2.IDKey(keyString, salt, 32, 64*1024, 2, 32)
+			io.ReadFull(rand.Reader, keyString)
+			defer io.ReadFull(rand.Reader, key)
+			bc, _ := aes.NewCipher(key)
+			f := os.Stdin
+			output := os.Stdout
+			defer output.Sync()
 
-		iv := make([]byte, 16)
-		io.ReadFull(rand.Reader, iv)
-		fmt.Println("Encryption is in progress. Please wait patiently.")
-		encryptFileCBC(f, output, bc, iv, salt)
-		return
-	} else if mode == 1 {
-		fmt.Println("Please enter the file to be decrypted")
-		fmt.Print("file >>")
-		fmt.Scanln(&filename)
-		fmt.Println()
-		if !strings.HasSuffix(filename, ".lfc") {
-			fmt.Println("The file must have a .lfc extension.")
-			return
-		}
-		if _, err := os.Stat(filename[:len(filename)-4]); err == nil {
-			fmt.Printf("File %s already exists.", filename[:len(filename)-4])
-			return
-		}
-		fmt.Println("Please enter the encryption key")
-		fmt.Print("key >>")
-		keyString, err := terminal.ReadPassword(int(syscall.Stdin))
-		fmt.Println()
-		salt := make([]byte, 32)
+			iv := make([]byte, 16)
+			io.ReadFull(rand.Reader, iv)
+			encryptFileCBC(f, output, bc, iv, salt)
+		} else if *opMode == "decrypt" || *opMode == "d" || *opMode == "dec" {
+			keyString := []byte(*stdKey)
+			io.ReadFull(rand.Reader, keyString)
 
-		fmt.Println("Hashing")
-
-		f, err := os.Open(filename)
-		if err != nil {
-			fmt.Println("File Open Error")
-			return
+			salt := make([]byte, 32)
+			f := os.Stdin
+			output := os.Stdout
+			defer output.Sync()
+			key := argon2.IDKey(keyString, salt, 32, 64*1024, 2, 32)
+			defer io.ReadFull(rand.Reader, key)
+			f.Read(salt)
+			bc, _ := aes.NewCipher(key)
+			iv := make([]byte, 16)
+			io.ReadFull(rand.Reader, iv)
+			decryptFileCBC(f, output, bc)
 		}
-		defer f.Sync()
-		output, err := os.OpenFile(filename[:len(filename)-4], os.O_CREATE, os.ModeAppend)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		f.Read(salt)
-
-		key := argon2.IDKey(keyString, salt, 32, 64*1024, 2, 32)
-		io.ReadFull(rand.Reader, keyString)
-		io.ReadFull(rand.Reader, keyString)
-		io.ReadFull(rand.Reader, keyString)
-		io.ReadFull(rand.Reader, keyString)
-		io.ReadFull(rand.Reader, keyString)
-		defer io.ReadFull(rand.Reader, key)
-		defer io.ReadFull(rand.Reader, key)
-		defer io.ReadFull(rand.Reader, key)
-		defer io.ReadFull(rand.Reader, key)
-		defer io.ReadFull(rand.Reader, key)
-		bc, _ := aes.NewCipher(key)
-
-		iv := make([]byte, 16)
-		io.ReadFull(rand.Reader, iv)
-		fmt.Println("Decryption is in progress. Please wait patiently.")
-		err = decryptFileCBC(f, output, bc)
-		if err != nil {
-			fmt.Println("Decryption Failed")
-			fmt.Println(err)
-			return
-		}
-		return
 	}
 }
 

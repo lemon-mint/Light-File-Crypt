@@ -29,23 +29,23 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 - `internal/unsafeheader`
-- `internal/race`
-- `runtime/internal/sys`
 - `unicode/utf8`
+- `internal/race`
 - `unicode`
-- `crypto/internal/subtle`
+- `runtime/internal/sys`
 - `internal/cpu`
-- `crypto/subtle`
+- `crypto/internal/subtle`
 - `sync/atomic`
+- `crypto/subtle`
+- `math/bits`
 - `runtime/internal/atomic`
 - `runtime/internal/math`
-- `math/bits`
 - `internal/syscall/windows/sysdll`
 - `unicode/utf16`
 - `internal/nettrace`
+- `internal/testlog`
 - `internal/bytealg`
 - `math`
-- `internal/testlog`
 - `runtime`
 - `internal/reflectlite`
 - `golang.org/x/sys/cpu`
@@ -55,7 +55,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - `errors`
 - `sort`
 - `internal/oserror`
-- `golang.org/x/net/dns/dnsmessage`
 - `io`
 - `strconv`
 - `syscall`
@@ -79,9 +78,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - `golang.org/x/crypto/argon2`
 - `fmt`
 - `net`
+- `flag`
 - `math/big`
 - `golang.org/x/sys/windows`
 - `crypto/rand`
 - `golang.org/x/term`
 - `golang.org/x/crypto/ssh/terminal`
+- `golang.org/x/net/dns/dnsmessage`
 - `internal/syscall/windows/registry`
+- `internal/syscall/unix`
+- `golang.org/x/sys/unix`
