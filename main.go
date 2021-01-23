@@ -160,15 +160,15 @@ func main() {
 			encryptFileCBC(f, output, bc, iv, salt)
 		} else if *opMode == "decrypt" || *opMode == "d" || *opMode == "dec" {
 			keyString := []byte(*stdKey)
-			io.ReadFull(rand.Reader, keyString)
 
-			salt := make([]byte, 32)
 			f := os.Stdin
+			salt := make([]byte, 32)
+			f.Read(salt)
 			output := os.Stdout
 			defer output.Sync()
 			key := argon2.IDKey(keyString, salt, 32, 64*1024, 2, 32)
+			io.ReadFull(rand.Reader, keyString)
 			defer io.ReadFull(rand.Reader, key)
-			f.Read(salt)
 			bc, _ := aes.NewCipher(key)
 			iv := make([]byte, 16)
 			io.ReadFull(rand.Reader, iv)
