@@ -233,7 +233,7 @@ func encryptFileCBC(input io.Reader, output io.Writer, bc cipher.Block, iv, salt
 	return nil
 }
 
-var errWrongSize = errors.New("Weong Size")
+var errWrongSize = errors.New("wrong size")
 
 func decryptFileCBC(input io.Reader, output io.Writer, bc cipher.Block) error {
 	r := bufio.NewReaderSize(input, 1024*1024*20)
